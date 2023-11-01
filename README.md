@@ -18,7 +18,7 @@ thread 'main' panicked at 'index out of bounds: the len is 1 but the index is 1'
 
 To run it, simply use cargo:
 ```
-$ cargo r --release 2
+$ cargo r --release -- 2
     Finished release [optimized] target(s) in 0.00s
      Running `/home/postgres/cpu-eater/target/release/cpu-eater 2`
 threadid: 14449
@@ -36,5 +36,3 @@ When `cpu-eater` is run, it shows the thread id's of the threads that it spawned
 These can be used for further investigation.
 
 To cancel running `cpu-eater`, press control-c.
-```
-```
