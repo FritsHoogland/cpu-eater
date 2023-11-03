@@ -1,28 +1,67 @@
-use std::thread;
-use std::env;
+use std::{
+    thread, 
+    env, 
+    process, 
+    ops::Deref, 
+    time::Instant, 
+    iter::repeat_with, 
+    sync::{Arc, Mutex}
+};
 use os_id::thread as osthread;
+use ctrlc;
 
-//const NTHREADS: usize = 9;
+const COUNTER_STEP: usize = 10_000;
 
 fn main() {
+    // collect number of threads from first argument, and panic if it doesn't exist.
     let args: Vec<String> = env::args().collect();
-    let nthreads = &args[1];
+    let nthreads = &args[1].parse::<usize>().unwrap();
 
+    // vector for join handles
     let mut threads = vec![];
+    // created vector for the counters for the threads.
+    let counter_vector: Vec<_> =
+        repeat_with(|| Arc::new(Mutex::new(0)))
+            .take(*nthreads)
+            .collect();
 
-    for _nr in 0..nthreads.parse::<i32>().unwrap() {
-        threads.push(thread::spawn(|| {
+    let timer = Instant::now();
+    for nr in 0..*nthreads {
+        let cv_clone = counter_vector.clone();
+        threads.push(thread::Builder::new().name(format!("cpu-eater-w-{}",nr)).spawn(move || {
             println!("threadid: {:?}", osthread::get_raw_id());
             let mut _x=0;
+            let mut loop_counter=0;
             loop
             {
                 _x += 1;
                 _x -= 1;
+                loop_counter +=1;
+                if loop_counter == COUNTER_STEP
+                {
+                    *cv_clone[nr].lock().unwrap() += 1;
+                    loop_counter = 0;
+                }
             }
         }));
     };
 
+    let _ = ctrlc::set_handler(move || {
+        println!("");
+        let time_spent_millis = timer.elapsed().as_millis();
+        let mut total = 0;
+        for nr in 0..counter_vector.len() {
+            let number = counter_vector[nr].lock().unwrap();
+            let number_deref = number.deref();
+            total += number_deref/time_spent_millis;
+            println!("thread number: {}, steps: {}, steps/ms: {}, ", nr, number, number_deref/time_spent_millis);
+        };
+        println!("Total steps/ms: {}, total time of test: {:?}", total, timer.elapsed());
+        process::exit(0);
+    });
+
+
     for thread in threads {
-        let _ = thread.join();
+        let _ = thread.expect("Getting thread handle failed").join();
     };
 }
