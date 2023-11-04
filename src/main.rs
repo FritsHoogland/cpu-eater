@@ -2,13 +2,12 @@ use std::{
     thread, 
     env, 
     process, 
-    ops::Deref, 
     time::Instant, 
     iter::repeat_with, 
-    sync::{Arc, Mutex}
+    sync::{Arc},
+    sync::atomic::{AtomicU64,Ordering},
 };
 use os_id::thread as osthread;
-use ctrlc;
 
 const COUNTER_STEP: usize = 10_000;
 
@@ -21,7 +20,7 @@ fn main() {
     let mut threads = vec![];
     // created vector for the counters for the threads.
     let counter_vector: Vec<_> =
-        repeat_with(|| Arc::new(Mutex::new(0)))
+        repeat_with(|| Arc::new(AtomicU64::new(0)))
             .take(*nthreads)
             .collect();
 
@@ -39,7 +38,7 @@ fn main() {
                 loop_counter +=1;
                 if loop_counter == COUNTER_STEP
                 {
-                    *cv_clone[nr].lock().unwrap() += 1;
+                    let _ = cv_clone[nr].fetch_add(1,Ordering::Relaxed);
                     loop_counter = 0;
                 }
             }
@@ -47,14 +46,12 @@ fn main() {
     };
 
     let _ = ctrlc::set_handler(move || {
-        println!("");
+        println!();
         let time_spent_millis = timer.elapsed().as_millis();
         let mut total = 0;
-        for nr in 0..counter_vector.len() {
-            let number = counter_vector[nr].lock().unwrap();
-            let number_deref = number.deref();
-            total += number_deref/time_spent_millis;
-            println!("thread number: {}, steps: {}, steps/ms: {}, ", nr, number, number_deref/time_spent_millis);
+        for (nr, number) in counter_vector.iter().map(|number| number.load(Ordering::Relaxed)).enumerate() {
+            total += number as u128/time_spent_millis;
+            println!("thread number: {}, steps: {}, steps/ms: {}, ", nr, number as u128, number as u128/time_spent_millis);
         };
         println!("Total steps/ms: {}, total time of test: {:?}", total, timer.elapsed());
         process::exit(0);
