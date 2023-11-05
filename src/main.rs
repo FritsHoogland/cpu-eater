@@ -9,7 +9,7 @@ use std::{thread,
 };
 use os_id::thread as osthread;
 
-const COUNTER_STEP: usize = 10_000;
+const COUNTER_STEP: usize = 100_000;
 
 fn main()
 {
