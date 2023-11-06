@@ -3,13 +3,14 @@ use std::{thread,
           process,
           time::Instant,
           iter::repeat_with,
+          hint::black_box,
           sync::{Arc,
                  atomic::{AtomicU64,Ordering}
           },
 };
 use os_id::thread as osthread;
 
-const COUNTER_STEP: usize = 100_000;
+const COUNTER_STEP: usize = 1_000;
 
 fn main()
 {
@@ -36,8 +37,8 @@ fn main()
             let mut loop_counter=0;
             loop
             {
-                _x += 1;
-                _x -= 1;
+                _x = black_box(black_box(_x) + black_box(1));
+                _x = black_box(black_box(_x) - black_box(1));
                 loop_counter +=1;
                 if loop_counter == COUNTER_STEP
                 {
