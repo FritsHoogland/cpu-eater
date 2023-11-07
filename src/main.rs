@@ -16,18 +16,27 @@ fn main()
 {
     // collect number of threads from first argument, and panic if it doesn't exist.
     let args: Vec<String> = env::args().collect();
-    let nthreads = &args[1].parse::<usize>().unwrap();
+    let nthreads = if args.len() > 1
+    {
+        args[1].parse::<usize>().unwrap()
+    }
+    else
+    {
+        1
+    };
+
+    //let runtime = &args[2].parse::<usize>().unwrap_or(0);
 
     // vector for join handles
     let mut threads = vec![];
     // created vector for the counters for the threads.
     let counter_vector: Vec<_> =
         repeat_with(|| Arc::new(AtomicU64::new(0)))
-            .take(*nthreads)
+            .take(nthreads)
             .collect();
 
     let timer = Instant::now();
-    for nr in 0..*nthreads
+    for nr in 0..nthreads
     {
         let counter_vector_clone = counter_vector.clone();
         threads.push(thread::Builder::new().name(format!("cpu-eater-w-{}",nr)).spawn(move ||
