@@ -1,11 +1,11 @@
 use std::{thread,
           env,
           process,
-          time::Instant,
+          time::{Instant,Duration},
           iter::repeat_with,
           hint::black_box,
           sync::{Arc,
-                 atomic::{AtomicU64,Ordering}
+                 atomic::{AtomicU64,Ordering,AtomicBool}
           },
 };
 use os_id::thread as osthread;
@@ -24,6 +24,15 @@ fn main()
     {
         1
     };
+    let sleep_time = if args.len() > 2
+    {
+        args[2].parse::<usize>().unwrap()
+    }
+    else
+    {
+        0
+    };
+    let stop_bool = Arc::new(AtomicBool::new(false));
 
     //let runtime = &args[2].parse::<usize>().unwrap_or(0);
 
@@ -39,6 +48,7 @@ fn main()
     for nr in 0..nthreads
     {
         let counter_vector_clone = counter_vector.clone();
+        let atomic_stop_bool = stop_bool.clone();
         threads.push(thread::Builder::new().name(format!("cpu-eater-w-{}",nr)).spawn(move ||
         {
             println!("threadid: {:?}", osthread::get_raw_id());
@@ -53,13 +63,36 @@ fn main()
                 {
                     let _ = counter_vector_clone[nr].fetch_add(1,Ordering::Relaxed);
                     loop_counter = 0;
+                    if atomic_stop_bool.load(Ordering::Relaxed) { break };
                 }
             }
         }));
     };
 
+    if sleep_time > 0
+    {
+        thread::sleep(Duration::from_secs(sleep_time.try_into().unwrap()));
+        stop_bool.store(true, Ordering::Relaxed);
+        print_statistics_and_terminate(timer, counter_vector.clone());
+    }
+
     let _ = ctrlc::set_handler(move ||
     {
+        print_statistics_and_terminate(timer, counter_vector.clone());
+    });
+
+
+    for thread in threads
+    {
+        let _ = thread.expect("Getting thread handle failed").join();
+    };
+}
+
+fn print_statistics_and_terminate(
+    timer: Instant,
+    counter_vector: Vec<Arc<AtomicU64>>,
+)
+{
         println!();
         let time_spent_millis = timer.elapsed().as_millis();
         let mut total = 0;
@@ -70,11 +103,4 @@ fn main()
         };
         println!("Total steps/ms: {}, total time of test: {:?}", total, timer.elapsed());
         process::exit(0);
-    });
-
-
-    for thread in threads
-    {
-        let _ = thread.expect("Getting thread handle failed").join();
-    };
 }
