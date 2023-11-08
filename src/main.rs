@@ -5,7 +5,7 @@ use std::{thread,
           iter::repeat_with,
           hint::black_box,
           sync::{Arc,
-                 atomic::{AtomicU64,Ordering,AtomicBool}
+                 atomic::{AtomicU64,Ordering}
           },
 };
 use os_id::thread as osthread;
@@ -32,9 +32,6 @@ fn main()
     {
         0
     };
-    let stop_bool = Arc::new(AtomicBool::new(false));
-
-    //let runtime = &args[2].parse::<usize>().unwrap_or(0);
 
     // vector for join handles
     let mut threads = vec![];
@@ -48,7 +45,6 @@ fn main()
     for nr in 0..nthreads
     {
         let counter_vector_clone = counter_vector.clone();
-        let atomic_stop_bool = stop_bool.clone();
         threads.push(thread::Builder::new().name(format!("cpu-eater-w-{}",nr)).spawn(move ||
         {
             println!("threadid: {:?}", osthread::get_raw_id());
@@ -63,7 +59,6 @@ fn main()
                 {
                     let _ = counter_vector_clone[nr].fetch_add(1,Ordering::Relaxed);
                     loop_counter = 0;
-                    if atomic_stop_bool.load(Ordering::Relaxed) { break };
                 }
             }
         }));
@@ -72,14 +67,13 @@ fn main()
     if sleep_time > 0
     {
         thread::sleep(Duration::from_secs(sleep_time.try_into().unwrap()));
-        stop_bool.store(true, Ordering::Relaxed);
         print_statistics_and_terminate(timer, counter_vector.clone());
     }
 
-    let _ = ctrlc::set_handler(move ||
+    ctrlc::set_handler(move ||
     {
         print_statistics_and_terminate(timer, counter_vector.clone());
-    });
+    }).expect("Error setting ctrlc handler");
 
 
     for thread in threads
