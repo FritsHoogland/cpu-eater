@@ -8,3 +8,10 @@ edition = "2021"
 [dependencies]
 os-id = "*"
 ctrlc = "*"
+
+[dev-dependencies]
+criterion = { version = "0.4" }
+
+[[bench]]
+name = "benchmark"
+harness = false
