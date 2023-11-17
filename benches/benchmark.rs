@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use std::thread;
 use std::{iter::repeat_with,sync::{Arc,atomic::{AtomicU64,Ordering,AtomicBool}}};
 
@@ -200,8 +200,23 @@ fn benchmark_shared_atomicbool(
     group.bench_function("6", |benchmark| benchmark.iter(|| shared_atomicbool_multi_thread(6)));
     group.finish();
 }
+fn benchmark_with_inputs(
+    criterion: &mut Criterion,
+)
+{
+    let concurrency = [1, 2, 3, 4, 5, 6];
+    let mut group = criterion.benchmark_group("tt");
+    for val in concurrency
+    {
+        group.bench_with_input(BenchmarkId::new("atomicbool", val), &val, |benchmark, &val| { benchmark.iter(|| shared_atomicbool_multi_thread(val)) });
+        group.bench_with_input(BenchmarkId::new("atomicu64", val), &val, |benchmark, &val| { benchmark.iter(|| shared_atomicu64_multi_thread(val)) });
+        group.bench_with_input(BenchmarkId::new("u64 nonoptim", val), &val, |benchmark, &val| { benchmark.iter(|| no_shared_multi_thread(val)) });
+        group.bench_with_input(BenchmarkId::new("u64 optimized", val), &val, |benchmark, &val| { benchmark.iter(|| no_shared_op_multi_thread(val)) });
+    }
+}
 
-criterion_group!(benches, benchmark_no_shared_optim, benchmark_no_shared_nonoptim, benchmark_shared_atomicu64, benchmark_shared_atomicbool);
+//criterion_group!(benches, benchmark_no_shared_optim, benchmark_no_shared_nonoptim, benchmark_shared_atomicu64, benchmark_shared_atomicbool);
+criterion_group!(benches, benchmark_with_inputs);
 //criterion_group!(benches, benchmark_no_shared_nonoptim);
 //criterion_group!(benches, benchmark_shared_atomicu64);
 //criterion_group!(benches, benchmark_shared_atomicbool);
