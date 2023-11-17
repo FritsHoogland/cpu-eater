@@ -145,40 +145,55 @@ fn shared_atomicbool_multi_thread(
   };
 }
 
-fn benchmark_no_shared( 
+fn benchmark_no_shared_optim( 
     criterion: &mut Criterion,
 )
 {
     let mut group = criterion.benchmark_group("non shared optim");
-    group.sample_size(1000);
-    group.measurement_time(std::time::Duration::from_secs(30));
+    //group.sample_size(1000);
+    //group.measurement_time(std::time::Duration::from_secs(30));
     group.bench_function("1", |benchmark| benchmark.iter(|| no_shared_op_multi_thread(1)));
     group.bench_function("2", |benchmark| benchmark.iter(|| no_shared_op_multi_thread(2)));
     group.bench_function("4", |benchmark| benchmark.iter(|| no_shared_op_multi_thread(4)));
     group.bench_function("6", |benchmark| benchmark.iter(|| no_shared_op_multi_thread(6)));
     group.finish();
+}
 
+fn benchmark_no_shared_nonoptim(
+    criterion: &mut Criterion,
+)
+{
     let mut group = criterion.benchmark_group("non shared nonoptim");
-    group.sample_size(1000);
-    group.measurement_time(std::time::Duration::from_secs(30));
+    //group.sample_size(1000);
+    //group.measurement_time(std::time::Duration::from_secs(30));
     group.bench_function("1", |benchmark| benchmark.iter(|| no_shared_multi_thread(1)));
     group.bench_function("2", |benchmark| benchmark.iter(|| no_shared_multi_thread(2)));
     group.bench_function("4", |benchmark| benchmark.iter(|| no_shared_multi_thread(4)));
     group.bench_function("6", |benchmark| benchmark.iter(|| no_shared_multi_thread(6)));
     group.finish();
+}
 
+fn benchmark_shared_atomicu64(
+    criterion: &mut Criterion,
+)
+{
     let mut group = criterion.benchmark_group("shared atomicu64");
-    group.sample_size(1000);
-    group.measurement_time(std::time::Duration::from_secs(30));
+    //group.sample_size(1000);
+    //group.measurement_time(std::time::Duration::from_secs(30));
     group.bench_function("1", |benchmark| benchmark.iter(|| shared_atomicu64_multi_thread(1)));
     group.bench_function("2", |benchmark| benchmark.iter(|| shared_atomicu64_multi_thread(2)));
     group.bench_function("4", |benchmark| benchmark.iter(|| shared_atomicu64_multi_thread(4)));
     group.bench_function("6", |benchmark| benchmark.iter(|| shared_atomicu64_multi_thread(6)));
     group.finish();
+}
 
+fn benchmark_shared_atomicbool(
+    criterion: &mut Criterion,
+)
+{
     let mut group = criterion.benchmark_group("shared atomicbool");
-    group.sample_size(1000);
-    group.measurement_time(std::time::Duration::from_secs(30));
+    //group.sample_size(1000);
+    //group.measurement_time(std::time::Duration::from_secs(30));
     group.bench_function("1", |benchmark| benchmark.iter(|| shared_atomicbool_multi_thread(1)));
     group.bench_function("2", |benchmark| benchmark.iter(|| shared_atomicbool_multi_thread(2)));
     group.bench_function("4", |benchmark| benchmark.iter(|| shared_atomicbool_multi_thread(4)));
@@ -186,5 +201,8 @@ fn benchmark_no_shared(
     group.finish();
 }
 
-criterion_group!(benches, benchmark_no_shared);
+criterion_group!(benches, benchmark_no_shared_optim, benchmark_no_shared_nonoptim, benchmark_shared_atomicu64, benchmark_shared_atomicbool);
+//criterion_group!(benches, benchmark_no_shared_nonoptim);
+//criterion_group!(benches, benchmark_shared_atomicu64);
+//criterion_group!(benches, benchmark_shared_atomicbool);
 criterion_main!(benches);
