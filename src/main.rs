@@ -12,6 +12,9 @@ use os_id::thread as osthread;
 
 const COUNTER_STEP: usize = 1_000;
 
+#[repr(align(64))]
+struct AlignedAtomicU64(AtomicU64);
+
 fn main()
 {
     // collect number of threads from first argument, and panic if it doesn't exist.
@@ -33,13 +36,21 @@ fn main()
         0
     };
 
+
     // vector for join handles
     let mut threads = vec![];
     // created vector for the counters for the threads.
     let counter_vector: Vec<_> =
-        repeat_with(|| Arc::new(AtomicU64::new(0)))
+        repeat_with(|| Arc::new(AlignedAtomicU64(AtomicU64::new(0))))
             .take(nthreads)
             .collect();
+
+    /*
+    static counter_vector: [AlignedAtomicU64; nthreads] = for _ in 0..nthreads {
+        AlignedAtomicU64(AtomicU64::new(0));
+    };
+
+     */
 
     let timer = Instant::now();
     for nr in 0..nthreads
@@ -57,7 +68,7 @@ fn main()
                 loop_counter +=1;
                 if loop_counter == COUNTER_STEP
                 {
-                    let _ = counter_vector_clone[nr].fetch_add(1,Ordering::Relaxed);
+                    let _ = counter_vector_clone[nr].0.fetch_add(1,Ordering::Relaxed);
                     loop_counter = 0;
                 }
             }
@@ -84,13 +95,13 @@ fn main()
 
 fn print_statistics_and_terminate(
     timer: Instant,
-    counter_vector: Vec<Arc<AtomicU64>>,
+    counter_vector: Vec<Arc<AlignedAtomicU64>>,
 )
 {
         println!();
         let time_spent_millis = timer.elapsed().as_millis();
         let mut total = 0;
-        for (nr, number) in counter_vector.iter().map(|number| number.load(Ordering::Relaxed)).enumerate()
+        for (nr, number) in counter_vector.iter().map(|number| number.0.load(Ordering::Relaxed)).enumerate()
         {
             total += number as u128/time_spent_millis;
             println!("thread number: {}, steps: {}, steps/ms: {}, ", nr, number as u128, number as u128/time_spent_millis);
